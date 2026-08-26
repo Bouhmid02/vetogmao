@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>GMAO</title>
+<style>
+:root{--p:#0d47a1;--s:#1976d2;--danger:#c62828;--ok:#2e7d32;--warn:#f9a825}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,sans-serif}
+body{background:#f4f7fb;color:#222}
+#auth{position:fixed;inset:0;background:linear-gradient(135deg,#0d47a1,#1976d2);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
+.lbox{background:#fff;padding:30px;border-radius:14px;width:360px;max-width:100%;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+.lbox h1{text-align:center;color:var(--p);margin-bottom:16px}
+input,select{width:100%;padding:11px;margin:6px 0;border:1px solid #ccc;border-radius:8px;font-size:15px}
+button{background:var(--p);color:#fff;border:none;padding:11px 15px;border-radius:8px;cursor:pointer;font-size:14px}
+.btn-red{background:var(--danger)}.btn-green{background:var(--ok)}
+header{background:var(--p);color:#fff;padding:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.lang-btns button{background:rgba(255,255,255,.15);padding:6px 10px;margin-left:4px}
+.lang-btns button.active{background:#fff;color:var(--p)}
+nav{background:#fff;display:flex;padding:0 8px;overflow-x:auto;box-shadow:0 2px 5px rgba(0,0,0,.08)}
+nav button{background:none;color:#555;border-bottom:3px solid transparent;border-radius:0;padding:13px 12px;white-space:nowrap}
+nav button.active{color:var(--p);border-color:var(--p);font-weight:bold}
+main{padding:16px;max-width:1100px;margin:auto}
+.page{display:none}.page.active{display:block}
+h2{color:var(--p);margin-bottom:12px;font-size:17px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:18px}
+.card{background:#fff;border-radius:12px;padding:14px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.card .num{font-size:28px;font-weight:bold;color:var(--p)}
+.card.d .num{color:var(--danger)}.card.o .num{color:var(--ok)}.card.w .num{color:var(--warn)}
+.tw{overflow-x:auto;background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:22px}
+table{width:100%;border-collapse:collapse}
+th{background:var(--p);color:#fff;padding:11px 10px;text-align:start;font-size:12px}
+td{padding:10px;border-top:1px solid #eee;font-size:13px}
+.badge{padding:4px 10px;border-radius:20px;font-size:11px;color:#fff}
+.b-open{background:var(--danger)}.b-progress{background:var(--warn)}.b-done{background:var(--ok)}
+.fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;background:#fff;padding:14px;border-radius:12px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.low{color:var(--danger);font-weight:bold}
+[dir=rtl] th,[dir=rtl] td{text-align:right}
+.msg{padding:10px;border-radius:8px;margin-top:10px;font-size:13px;display:none}
+.err{background:#ffebee;color:var(--danger)}.okm{background:#e8f5e9;color:var(--ok)}
+</style>
+</head>
+<body>
+
+<div id="auth">
+ <div class="lbox" id="loginBox">
+  <h1>🔧 GMAO</h1>
+  <input id="inUser" placeholder="👤 Utilisateur">
+  <input id="inPass" type="password" placeholder="🔒 Mot de passe">
+  <button onclick="doLogin()" style="width:100%">Se connecter ➜</button>
+  <div id="logMsg" class="msg err"></div>
+  <select id="langSel" onchange="setLang(this.value)" style="margin-top:12px">
+   <option value="fr">🇫🇷 Français</option><option value="en">🇬🇧 English</option><option value="ar">🇸🇦 العربية</option>
+  </select>
+  <p style="text-align:center;margin-top:10px;font-size:13px"><a href="#" onclick="showReg(true)">Créer un compte</a></p>
+ </div>
+ <div class="lbox" id="regBox" style="display:none">
+  <h1>📝 Nouveau compte</h1>
+  <input id="rName" placeholder="Nom complet">
+  <input id="rUser" placeholder="Nom d'utilisateur">
+  <input id="rPass" type="password" placeholder="Mot de passe (min. 4)">
+  <button class="btn-green" style="width:100%" onclick="doRegister()">Créer mon compte</button>
+  <div id="regMsg" class="msg"></div>
+  <p style="text-align:center;margin-top:10px"><a href="#" onclick="showReg(false)">← Retour</a></p>
+ </div>
+</div>
+
+<div id="appEl" style="display:none">
+<header>
+ <h1 style="font-size:16px">🔧 GMAO — <b id="whoami"></b></h1>
+ <div class="lang-btns">
+  <button onclick="setLang('fr')">FR</button><button onclick="setLang('en')">EN</button>
+  <button onclick="setLang('ar')">AR</button><button class="btn-red" onclick="logout()">⎋</button>
+ </div>
+</header>
+<nav id="nav"></nav>
+<main>
+ <section class="page active" id="pg-dash">
+  <h2 data-t="dashboard"></h2>
+  <div class="cards">
+   <div class="card"><div class="num" id="c-mach">0</div><div data-t="machines"></div></div>
+   <div class="card d"><div class="num" id="c-down">0</div><div data-t="stopped"></div></div>
+   <div class="card w"><div class="num" id="c-wo">0</div><div data-t="openWO"></div></div>
+   <div class="card o"><div class="num" id="c-parts">0</div><div data-t="partsN"></div></div>
+   <div class="card w"><div class="num" id="c-low">0</div><div data-t="lowStock"></div></div>
+  </div>
+  <h2 data-t="recentWO"></h2>
+  <div class="tw"><table><tbody id="dashTable"></tbody></table></div>
+ </section>
+
+ <section class="page" id="pg-mach">
+  <h2 data-t="machinesT"></h2>
+  <div class="fg">
+   <input id="mName" placeholder="Nom machine"><input id="mLoc" placeholder="Localisation">
+   <button class="btn-green" data-t="addBtn" onclick="addMachine()"></button>
+  </div>
+  <div class="tw"><table><thead><tr><th>#</th><th data-t="name"></th><th data-t="location"></th><th data-t="status"></th><th></th></tr></thead><tbody id="machBody"></tbody></table></div>
+ </section>
+
+ <section class="page" id="pg-wo">
+  <h2 data-t="woTitle"></h2>
+  <div class="fg">
+   <select id="woMachine"></select><input id="woDesc" placeholder="Description du problème">
+   <input type="date" id="woDate">
+   <select id="woPrio"><option value="high">🔴 Haute</option><option value="med">🟡 Moyenne</option><option value="low">🟢 Basse</option></select>
+   <button class="btn-green" data-t="newWOBtn" onclick="addWO()"></button>
+  </div>
+  <div class="tw"><table><thead><tr><th>#</th><th data-t="machine"></th><th data-t="desc"></th><th data-t="date"></th><th data-t="priority"></th><th data-t="by"></th><th data-t="status"></th><th></th></tr></thead><tbody id="woBody"></tbody></table></div>
+ </section>
+
+ <section class="page" id="pg-parts">
+  <h2 data-t="partsTitle"></h2>
+  <div class="fg">
+   <input id="pName" placeholder="Référence pièce">
+   <input id="pQty" type="number" placeholder="Quantité" min="0">
+   <input id="pMin" type="number" placeholder="Seuil mini" value="5">
+   <input id="pLoc" placeholder="Emplacement">
+   <button class="btn-green" data-t="addBtn" onclick="addPart()"></button>
+  </div>
+  <div class="tw"><table><thead><tr><th>#</th><th data-t="part"></th><th data-t="qty"></th><th data-t="min"></th><th data-t="location"></th><th></th></tr></thead><tbody id="partBody"></tbody></table></div>
+ </section>
+
+ <section class="page" id="pg-admin">
+  <h2 data-t="adminT"></h2>
+  <div class="tw"><table><thead><tr><th>#</th><th data-t="name"></th><th data-t="username"></th><th data-t="role"></th><th></th></tr></thead><tbody id="usersBody"></tbody></table></div>
+  <br><h2 data-t="history"></h2>
+  <div class="tw"><table><thead><tr><th>#</th><th data-t="machine"></th><th data-t="desc"></th><th data-t="date"></th><th data-t="duration"></th></tr></thead><tbody id="histBody"></tbody></table></div>
+ </section>
+</main>
+</div>
+
+<script>
+/* ===== i18n ===== */
+var T={
+ fr:{dashboard:"📊 Tableau de bord",machines:"Machines",stopped:"Arrêts",openWO:"OT ouverts",partsN:"Pièces stock",lowStock:"Stock faible",
+ recentWO:"Derniers ordres de travail",machinesT:"⚙️ Machines",name:"Nom",location:"Localisation",status:"Statut",
+ addBtn:"+ Ajouter",newWOBtn:"+ Nouvel OT",woTitle:"🛠️ Ordres de travail",machine:"Machine",desc:"Description",date:"Date",
+ priority:"Priorité",by:"Par",partsTitle:"📦 Pièces de rechange",part:"Pièce",qty:"Qté",min:"Mini",
+ adminT:"🔐 Gestion équipe",username:"Utilisateur",role:"Rôle",history:"Interventions terminées",duration:"Durée arrêt",
+ running:"En marche",stoppedS:"Arrêtée",stop:"Arrêter",start:"Démarrer",
+ done:"Terminé",progress:"En cours",open:"Ouvert",admin:"Admin",tech:"Technicien"},
+ en:{dashboard:"📊 Dashboard",machines:"Machines",stopped:"Stopped",openWO:"Open WOs",partsN:"Parts stock",lowStock:"Low stock",
+ recentWO:"Recent work orders",machinesT:"⚙️ Machines",name:"Name",location:"Location",status:"Status",
+ addBtn:"+ Add",newWOBtn:"+ New WO",woTitle:"🛠️ Work Orders",machine:"Machine",desc:"Description",date:"Date",
+ priority:"Priority",by:"By",partsTitle:"📦 Spare Parts",part:"Part",qty:"Qty",min:"Min",
+ adminT:"🔐 Team Management",username:"Username",role:"Role",history:"Completed history",duration:"Downtime",
+ running:"Running",stoppedS:"Stopped",stop:"Stop",start:"Start",
+ done:"Done",progress:"In progress",open:"Open",admin:"Admin",tech:"Technician"},
+ ar:{dashboard:"📊 لوحة التحكم",machines:"الآلات",stopped:"توقفات",openWO:"أوامر مفتوحة",partsN:"قطع المخزون",lowStock:"مخزون منخفض",
+ recentWO:"آخر أوامر العمل",machinesT:"⚙️ الآلات",name:"الاسم",location:"الموقع",status:"الحالة",
+ addBtn:"+ إضافة",newWOBtn:"+ أمر عمل جديد",woTitle:"🛠️ أوامر العمل",machine:"الآلة",desc:"الوصف",date:"التاريخ",
+ priority:"الأولوية",by:"بواسطة",partsTitle:"📦 قطع الغيار",part:"القطعة",qty:"الكمية",min:"الحد الأدنى",
+ adminT:"🔐 إدارة الفريق",username:"المستخدم",role:"الدور",history:"التدخلات المنجزة",duration:"مدة التوقف",
+ running:"تعمل",stoppedS:"متوقفة",stop:"إيقاف",start:"تشغيل",
+ done:"منجز",progress:"قيد التنفيذ",open:"مفتوح",admin:"مدير",tech:"فني"}
+};
+var lang='fr';
+
+function setLang(l){
+ lang=l;
+ document.documentElement.lang=l;
+ document.documentElement.dir=(l==='ar')?'rtl':'ltr';
+ document.querySelectorAll('[data-t]').forEach(function(e){e.textContent=T[l][e.dataset.t]});
+ renderAll();
+}
+
+/* ===== API ===== */
+var TOKEN=localStorage.getItem('gmao_token');
+var USER=null;
+
+function api(url,method,body){
+ return fetch('/api'+url,{
+  method:method||'GET',
+  headers:{'Content-Type':'application/json','Authorization':TOKEN?('Bearer '+TOKEN):''},
+  body:body?JSON.stringify(body):null
+ }).then(function(r){
+  if(r.status===401){localStorage.removeItem('gmao_token');location.reload();throw new Error('session');}
+  return r.json().then(function(d){
+   if(!r.ok&&d.error)throw new Error(d.error);
+   return d;
+  });
+ });
+}
+
+/* ===== AUTH ===== */
+function showMsg(id,text,isErr){
+ var el=document.getElementById(id);
+ el.textContent=text;el.className='msg '+(isErr?'err':'okm');el.style.display='block';
+ setTimeout(function(){el.style.display='none'},5000);
+}
+
+function doLogin(){
+ showMsg('logMsg','⏳ ...',false);
+ api('/login','POST',{username:document.getElementById('inUser').value.trim(),pass:document.getElementById('inPass').value})
+ .then(function(d){
+  TOKEN=d.token;USER=d.user;
+  localStorage.setItem('gmao_token',TOKEN);
+  enterApp();
+ })
+ .catch(function(e){showMsg('logMsg',e.message,true)});
+}
+
+function doRegister(){
+ api('/register','POST',{
+  name:document.getElementById('rName').value.trim(),
+  username:document.getElementById('rUser').value.trim(),
+  pass:document.getElementById('rPass').value})
+ .then(function(d){showMsg('regMsg','✅ '+d.message,false)})
+ .catch(function(e){showMsg('regMsg',e.message,true)});
+}
+
+function showReg(v){
+ document.getElementById('loginBox').style.display=v?'none':'block';
+ document.getElementById('regBox').style.display=v?'block':'none';
+}
+function logout(){localStorage.removeItem('gmao_token');location.reload()}
+
+/* ===== NAV ===== */
+var pages=[
+ {id:'dash',key:'dashboard'},
+ {id:'mach',key:'machinesT'},
+ {id:'wo',key:'woTitle'},
+ {id:'parts',key:'partsTitle'}
+];
+
+function buildNav(){
+ var nav=document.getElementById('nav');nav.innerHTML='';
+ pages.forEach(function(p){
+  var b=document.createElement('button');
+  b.id='nb-'+p.key;b.textContent=T[lang][p.key];
+  b.onclick(){showPage(p.id)};
+  nav.appendChild(b);
+ });
+ if(USERUSER.role==='admin'){
+  var a=document.createElement('button');
+  a.id='nb-admin';a.textContent=T[lang].adminT;
+  a.onclick=function(){showPage('admin')};
+  nav.appendChild(a);
+ }
+ pages.forEach(function(p){
+  if(document.getElementById('pg-'+p.id).classList.contains('active'))
+   document.getElementById('nb-'+p.key).classList.add('active');
+ });
+}
+
+function showPage(id){
+ document.querySelectorAll('.page').forEach(function(x){x.classList.remove('active')});
+ document.getElementById('pg-'+id).classList.add('active');
+ pages.forEach(function(p){
+  var b=document.getElementById('nb-'+p.key);
+  if(b)b.classList.remove('active');
+ });
+ var nb=document.getElementById('nb-'+id);
+ if(nb)nb.classList.add('active');
+ if(id==='admin')loadUsers();
+ window.scrollTo(0,0);
+}
+
+/* ===== DATA ===== */
+var db={machines:[],wos:[],parts:[],users:[]};
+
+function refreshData(){
+ Promise.all([api('/machines'),api('/wos'),api('/parts')])
+ .then(function(res){
+  db.machines=res[0];db.wos=res[1];db.parts=res[2];
+  renderAll();
+ })
+ .catch(function(e){console.log(e)});
+}
+
+function loadUsers(){
+ api('/users').then(function(u){db.users=u;renderUsers()}).catch(function(){});
+}
+
+/* ===== RENDER ===== */
+function esc(s){return String(s||'').replace(/</g,'&lt;')}
+function badge(s){
+ var c=s==='open'?'b-open':s==='progress'?'b-progress':'b-done';
+ return '<span class="badge '+c+'">'+esc(T[lang][s]||s)+'</span>';
+}
+
+function renderAll(){
+ /* Dashboard */
+ document.getElementById('c-mach').textContent=db.machines.length;
+ document.getElementById('c-down').textContent=db.machines.filter(function(m){return m.st==='stopped'}).length;
+ document.getElementById('c-wo').textContent=db.wos.filter(function(w){return w.st!=='done'}).length;
+ document.getElementById('c-parts').textContent=db.parts.reduce(function(a,p){return a+p.qty},0);
+ document.getElementById('c-low').textContent=db.parts.filter(function(p){return p.qty<=p.min}).length;
+
+ var h='';
+ db.wos.slice(-5).reverse().forEach(function(w){
+  h+='<tr><td>'+w.id+'</td><td>'+esc(w.machine)+'</td><td>'+esc(w.desc)+'</td><td>'+badge(w.st)+'</td></tr>';
+ });
+ document.getElementById('dashTable').innerHTML=h||'<tr><td colspan="4">—</td></tr>';
+
+ /* Machines */
+ document.getElementById('machBody').innerHTML=db.machines.map(function(m){
+  var run=m.st==='running';
+  return '<tr><td>'+m.id+'</td><td>'+esc(m.name)+'</td><td>'+esc(m.loc||'-')+'</td>'+
+   '<td style="color:'+(run?'#2e7d32':'#c62828')+'">'+(run?T[lang].running:T[lang].stoppedS)+'</td>'+
+   '<td><button class="'+(run?'btn-red':'btn-green')+'" style="padding:6px 10px;font-size:12px" onclick="toggleMachine('+m.id+')">'+
+   (run?T[lang].stop:T[lang].start)+'</button></td></tr>';
+ }).join('');
+
+ document.getElementById('woMachine').innerHTML=db.machines.map(function(m){return '<option>'+esc(m.name)+'</option>'}).join('');
+
+ /* WO */
+ document.getElementById('woBody').innerHTML=db.wos.slice().reverse().map(function(w){
+  var dot=w.prio==='high'?'🔴':w.prio==='med'?'🟡':'🟢';
+  var btn=w.st!=='done'?'<button style="padding:5px 9px;font-size:12px" onclick="advWO('+w.id+')">➜</button> ':'';
+  return '<tr><td>'+w.id+'</td><td>'+esc(w.machine)+'</td><td>'+esc(w.desc)+'</td><td>'+esc(w.date)+'</td>'+
+   '<td>'+dot+'</td><td>'+esc(w.by)+'</td><td>'+badge(w.st)+'</td><td>'+btn+
+   '<button class="btn-red" style="padding:5px 9px;font-size:12px" onclick="delWO('+w.id+')">✕</button></td></tr>';
+ }).join('')||'<tr><td colspan="8">—</td></tr>';
+
+ /* Parts */
+ document.getElementById('partBody').innerHTML=db.parts.map(function(p){
+  var low=p.qty<=p.min;
+  return '<tr><td>'+p.id+'</td><td>'+esc(p.name)+'</td><td class="'+(low?'low':'')+'">'+p.qty+(low?' ⚠':'')+'</td>'+
+   '<td>'+p.min+'</td><td>'+esc(p.loc||'-')+'</td>'+
+   '<td><button class="btn-green" style="padding:5px 9px;font-size:12px" onclick="chgPart('+p.id+',1)">+</button> '+
+   '<button class="btn-red" style="padding:5px 9px;font-size:12px" onclick="chgPart('+p.id+',-1)">−</button></td></tr>';
+ }).join('');
+
+ /* History */
+ var done=db.wos.filter(function(w){return w.st==='done'});
+ document.getElementById('histBody').innerHTML=done.map(function(w){
+  var dur='—';
+  if(w.date&&w.end)dur=Math.max(1,(new Date(w.end)-new Date(w.date))/86400000).toFixed(0)+' j';
+  return '<tr><td>'+w.id+'</td><td>'+esc(w.machine)+'</td><td>'+esc(w.desc)+'</td><td>'+esc(w.date)+' → '+esc(w.end)+'</td><td>'+dur+'</td></tr>';
+ }).join('')||'<tr><td colspan="5">—</td></tr>';
+}
+
+function renderUsers(){
+ document.getElementById('usersBody').innerHTML=db.users.map(function(u){
+  var sel='<select onchange="setRole('+u.id+',this.value)"'+(u.id===1?' disabled':'')+'>'+
+   '<option value="tech"'+(u.role==='tech'?' selected':'')+'>'+T[lang].tech+'</option>'+
+   '<option value="admin"'+(u.role==='admin'?' selected':'')+'>'+T[lang].admin+'</option></select>';
+  var del=u.id!==1?'<button class="btn-red" style="padding:5px 9px;font-size:12px" onclick="delUser('+u.id+')">✕</button>':'';
+  return '<tr><td>'+u.id+'</td><td>'+esc(u.name)+'</td><td>'+esc(u.username)+'</td><td>'+sel+'</td><td>'+del+'</td></tr>';
+ }).join('');
+}
+
+/* ===== ACTIONS ===== */
+function addMachine(){
+ var n=document.getElementById('mName').value.trim();
+ if(!n)return alert(T[lang].name+' ?');
+('/machines','POST',{name:n,loc:document.getElementById('mLoc').value})
+ .then(function(){document.getElementById('mName').value='';document.getElementById('mLoc').value='';refreshData()});
+}
+function toggleMachine(id){api('/machines/'+id+'/toggle','PUT').then(refreshData)}
+function addWO(){
+ var d=document.getElementById('woDesc').value.trim();
+ if(!d)return alert(T[lang].desc+' ?');
+ api('/wos','POST',{machine:document.getElementById('woMachine').value,desc:d,
+  date:document.getElementById('woDate').value,prio:document.getElementById('woPrio').value})
+ .then(function(){document.getElementById('woDesc').value='';refreshData()});
+}
+function advWO(id){api('/wos/'+id+'/advance','PUT').then(refreshData)}
+function delWO(id){if(confirm('?'))api('/wos/'+id,'DELETE').then(refreshData)}
+function addPart(){
+ var n=document.getElementById('pName').value.trim();
+ if(!n)return alert(T[lang].part+' ?');
+ api('/parts','POST',{name:n,qty:document.getElementById('pQty').value,min:document.getElementById('pMin').value,loc:document.getElementById('pLoc').value})
+ .then(function(){['pName','pQty','pLoc'].forEach(function(i){document.getElementById(i).value=''});refreshData()});
+}
+function chgPart(id,d){api('/parts/'+id+'/'+d,'PUT').then(refreshData)}
+function setRole(id,r){api('/users/'+id+'/role','PUT',{role:r}).then(loadUsers)}
+function delUser(id){if(confirm('?'))api('/users/'+id,'DELETE').then(loadUsers)}
+
+/* ===== START ===== */
+function enterApp(){
+ document.getElementById('auth').style.display='none';
+ document.getElementById('appEl').style.display='block';
+ document.getElementById('whoami').textContent=USER.name;
+ buildNav();
+ refreshData();
+ setLang(lang);
+}
+
+/* Auto-login si token sauvegarde */
+if(TOKEN){
+ api('/me')
+ .then(function(u){
+  USER={id:u.id,name:u.name,role:u.role};
+  enterApp();
+ })
+ .catch(function(){/* token invalide -> page login reste affichee */});
+}
+
+setLang('fr');
+document.addEventListener('keydown',function(e){
+ if(e.key==='Enter'&&TOKEN==null&&document.getElementById('loginBox').style.display!=='none')doLogin();
+});
+</script>
+</body>
+</html>
